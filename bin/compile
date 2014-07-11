@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir>
+
+# fail fast
+set -e
+
+BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
+# parse args
+BUILD_DIR=$1
+CACHE_DIR=$2
+
+# include .files when moving things around
+shopt -s dotglob
+
+echo "Gerrit runner:"
+echo "  build: $BUILD_DIR"
+echo "  cache: $CACHE_DIR"
+
+echo -n "-----> Running gerrit-runner ... "
+
+cd $BUILD_DIR
+
+if [ ! -f Procfile ]; then
+  cat > Procfile <<EOF
+web: sh bin/gerrit.sh start
+EOF
+fi

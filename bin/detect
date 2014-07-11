@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# bin/use <build-dir>
+
+BUILD_DIR=$1
+
+echo "gerrit-runner"
+test -f ${BUILD_DIR}/etc/gerrit.config
