@@ -4,13 +4,43 @@
 # fail fast
 set -e
 
+logger -p user.notice -t "slugc[$$]" "language_pack_java java_compile_start"
+
 BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
+
 # parse args
 BUILD_DIR=$1
 CACHE_DIR=$2
+ENV_DIR=$3
+
+LOGGER_FLAGS=""
 
 # include .files when moving things around
 shopt -s dotglob
+
+#create the cache dir if it doesn't exist
+mkdir -p $CACHE_DIR
+
+echo -n "-----> Installing jvm-common ... "
+curl --silent --location http://heroku-jvm-common.s3.amazonaws.com/jvm-buildpack-common.tar.gz | tar xz
+. bin/util
+. bin/java
+
+echo " done"
+
+export_env_dir $ENV_DIR
+
+# create default system.properties
+if [ ! -f ${BUILD_DIR}/system.properties ]; then
+  echo "java.runtime.version=1.6" > ${BUILD_DIR}/system.properties
+fi
+
+# install JDK
+javaVersion=$(detect_java_version ${BUILD_DIR})
+echo -n "-----> Installing OpenJDK ${javaVersion}..."
+install_java ${BUILD_DIR} ${javaVersion}
+jdk_overlay ${BUILD_DIR}
+echo " done"
 
 echo "Gerrit runner:"
 echo "  build: $BUILD_DIR"
@@ -31,3 +61,10 @@ if [ ! -f Procfile ]; then
 web: sh bin/gerrit.sh start
 EOF
 fi
+
+PROFILE_PATH="$BUILD_DIR/.profile.d/java.sh"
+mkdir -p $(dirname $PROFILE_PATH)
+echo 'export PATH="/app/.jdk/bin:$PATH"' >> $PROFILE_PATH
+echo 'export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Djava.rmi.server.useCodebaseOnly=true"' >> $PROFILE_PATH
+
+logger -p user.notice -t "slugc[$$]" "language_pack_java java_compile_end $LOGGER_FLAGS"
