@@ -17,6 +17,12 @@ echo "  build: $BUILD_DIR"
 echo "  cache: $CACHE_DIR"
 
 echo -n "-----> Running gerrit-runner ... "
+echo "/app:"
+ls -la /app
+echo "------"
+echo "$BUILD_DIR:"
+ls -la $BUILD_DIR
+echo "JAVA_HOME: $JAVA_HOME"
 
 cd $BUILD_DIR
 
