@@ -58,7 +58,7 @@ cd $BUILD_DIR
 
 if [ ! -f Procfile ]; then
   cat > Procfile <<EOF
-web: sh bin/gerrit.sh start
+web: bash bin/gerrit.sh start
 EOF
 fi
 
