@@ -46,8 +46,6 @@
 #   be set on SuSE systems.
 
 GERRIT_SITE=$(cd $(dirname $0)/..; pwd)
-echo "port: $PORT"
-JAVA_OPTIONS="$JAVA_OPTIONS -DGERRIT_PORT=$PORT"
 
 echo "gerrit-start[$$]" "starting gerrit site at $GERRIT_SITE"
 
@@ -190,6 +188,11 @@ test -r "$GERRIT_CONFIG" || {
   echo "gerrit-start[$$]" "** ERROR: $GERRIT_CONFIG is not readable!"
    exit 1
 }
+
+# Set proper PORT in listenUrl
+listenUrl=`git config --file "$GERRIT_CONFIG" "httpd.listenUrl" | sed -re "s/:[^\/]+/:$PORT/"`
+git config --file "$GERRIT_CONFIG" "httpd.listenUrl" $listenUrl
+echo "Set httpd.listenUrl to $listenUrl"
 
 GERRIT_PID="$GERRIT_SITE/logs/gerrit.pid"
 GERRIT_RUN="$GERRIT_SITE/logs/gerrit.run"
