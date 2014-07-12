@@ -46,6 +46,7 @@
 #   be set on SuSE systems.
 
 GERRIT_SITE=$(cd $(dirname $0)/..; pwd)
+echo "port: $PORT"
 
 logger -p user.notice -t "gerrit-start[$$]" "starting gerrit site at $GERRIT_SITE"
 
