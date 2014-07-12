@@ -42,6 +42,8 @@ install_java ${BUILD_DIR} ${javaVersion}
 jdk_overlay ${BUILD_DIR}
 echo " done"
 
+logger -p user.notice -t "slugc[$$]" "language_pack_java java_compile_end $LOGGER_FLAGS"
+
 echo "Gerrit runner:"
 echo "  build: $BUILD_DIR"
 echo "  cache: $CACHE_DIR"
@@ -68,4 +70,4 @@ echo 'export PATH="/app/.jdk/bin:$PATH"' >> $PROFILE_PATH
 echo 'export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Djava.rmi.server.useCodebaseOnly=true"' >> $PROFILE_PATH
 echo 'export JAVA_HOME=/app/.sdk' >> $PROFILE_PATH
 
-logger -p user.notice -t "slugc[$$]" "language_pack_java java_compile_end $LOGGER_FLAGS"
+logger -p user.notice -t "slugc[$$]" "gerrit runner end $LOGGER_FLAGS"

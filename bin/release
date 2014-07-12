@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # bin/release <build-dir>
 
+BIN_DIR=$(cd $(dirname $0); pwd) # absolute path
 BUILD_DIR=$1
+
+chmod 755 $BIN_DIR/gerrit.sh
+cp -a $BIN_DIR/gerrit.sh $BUILD_DIR/bin
 
 cat <<EOF
 ---
