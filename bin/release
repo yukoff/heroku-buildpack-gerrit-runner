@@ -11,6 +11,7 @@ cat <<EOF
 ---
 config_vars:
   PATH: /app/.jdk/bin:/usr/local/bin:/usr/bin:/bin
+  JAVA_HOME: /app/.jdk
   JAVA_OPTS: -Xmx384m -Xss512k -XX:+UseCompressedOops
   MAVEN_OPTS: -Xmx384m -Xss512k -XX:+UseCompressedOops
   START_STOP_DAEMON: 0
@@ -18,5 +19,5 @@ addons:
   shared-database:5mb
 
 default_process_types:
-  web: bash bin/gerrit.sh start
+  web: bash bin/gerrit.sh run
 EOF
