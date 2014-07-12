@@ -47,8 +47,9 @@
 
 GERRIT_SITE=$(cd $(dirname $0)/..; pwd)
 echo "port: $PORT"
+JAVA_OPTIONS="$JAVA_OPTIONS -DGERRIT_PORT=$PORT"
 
-logger -p user.notice -t "gerrit-start[$$]" "starting gerrit site at $GERRIT_SITE"
+echo "gerrit-start[$$]" "starting gerrit site at $GERRIT_SITE"
 
 usage() {
     me=`basename "$0"`
@@ -147,7 +148,7 @@ GERRIT_INSTALL_TRACE_FILE=etc/gerrit.config
 if type git >/dev/null 2>&1 ; then
   : OK
 else
-logger -p user.error -t "gerrit-start[$$]"  "** ERROR: Cannot find git in PATH"
+  echo "gerrit-start[$$]"  "** ERROR: Cannot find git in PATH"
   exit 1
 fi
 
@@ -165,7 +166,7 @@ fi
 # No GERRIT_SITE yet? We're out of luck!
 ##################################################
 if test -z "$GERRIT_SITE" ; then
-    logger -p user.error -t "gerrit-start[$$]"  "** ERROR: GERRIT_SITE not set"
+    echo "gerrit-start[$$]"  "** ERROR: GERRIT_SITE not set"
     exit 1
 fi
 
@@ -173,7 +174,7 @@ INITIAL_DIR=`pwd`
 if cd "$GERRIT_SITE" ; then
   GERRIT_SITE=`pwd`
 else
-  logger -p user.error -t "gerrit-start[$$]"  "** ERROR: Gerrit site $GERRIT_SITE not found"
+  echo "gerrit-start[$$]"  "** ERROR: Gerrit site $GERRIT_SITE not found"
   exit 1
 fi
 
@@ -182,11 +183,11 @@ fi
 #####################################################
 GERRIT_CONFIG="$GERRIT_SITE/$GERRIT_INSTALL_TRACE_FILE"
 test -f "$GERRIT_CONFIG" || {
-   logger -p user.error -t "gerrit-start[$$]" "** ERROR: Gerrit is not initialized in $GERRIT_SITE"
+  echo "gerrit-start[$$]" "** ERROR: Gerrit is not initialized in $GERRIT_SITE"
    exit 1
 }
 test -r "$GERRIT_CONFIG" || {
-   logger -p user.error -t "gerrit-start[$$]" "** ERROR: $GERRIT_CONFIG is not readable!"
+  echo "gerrit-start[$$]" "** ERROR: $GERRIT_CONFIG is not readable!"
    exit 1
 }
 
@@ -231,7 +232,7 @@ if test -z "$JAVA_HOME" ; then
           VERSION=`expr "$VERSION" : '.*"\(1.[0-9\.]*\)["_]'`
           test -z "$VERSION" && continue
           expr "$VERSION" \< 1.2 >/dev/null && continue
-          logger -p user.error -t "gerrit-start[$$]" "$VERSION:$J"
+          echo "gerrit-start[$$]" "$VERSION:$J"
         done
       done
     done | sort | tail -1 >"$TMPJ"
@@ -247,7 +248,7 @@ if test -z "$JAVA_HOME" ; then
     done
     test -z "$JAVA_HOME" && JAVA_HOME=
 
-    logger -p user.error -t "gerrit-start[$$]" "** INFO: Using $JAVA"
+    echo "gerrit-start[$$]" "** INFO: Using $JAVA"
 fi
 
 if test -z "$JAVA" \
@@ -258,10 +259,10 @@ if test -z "$JAVA" \
 fi
 
 if test -z "$JAVA" ; then
-    logger -p user.error -t "gerrit-start[$$]" \
-        "Cannot find a JRE or JDK. Please set JAVA_HOME or "\
-        "container.javaHome in $GERRIT_SITE/etc/gerrit.config "\
-        "to a >=1.6 JRE"
+    echo "gerrit-start[$$]" \
+         "Cannot find a JRE or JDK. Please set JAVA_HOME or "\
+         "container.javaHome in $GERRIT_SITE/etc/gerrit.config "\
+         "to a >=1.6 JRE"
     exit 1
 fi
 
@@ -321,12 +322,12 @@ if test -z "$GERRIT_WAR" -a -n "$GERRIT_USER" ; then
   done
 fi
 if test -z "$GERRIT_WAR" ; then
-  logger -p user.error -t "gerrit-start[$$]"  "** ERROR: Cannot find gerrit.war (try setting \$GERRIT_WAR)"
+  echo "gerrit-start[$$]"  "** ERROR: Cannot find gerrit.war (try setting \$GERRIT_WAR)"
   exit 1
 fi
 
 test -z "$GERRIT_USER" && GERRIT_USER=`whoami`
-logger -p user.error -t "gerrit-start[$$]"  "Running as user $GERRIT_USER"
+echo "gerrit-start[$$]"  "Running as user $GERRIT_USER"
 
 RUN_ARGS="-jar $GERRIT_WAR daemon -d $GERRIT_SITE"
 if test "`get_config --bool container.slave`" = "true" ; then
@@ -346,10 +347,10 @@ RUN_Arg3=
 ##################################################
 case "$ACTION" in
   start)
-    logger -p user.notice -t "gerrit-start[$$]"  "Starting Gerrit Code Review: "
+    echo "gerrit-start[$$]"  "Starting Gerrit Code Review: "
 
     if test 1 = "$NO_START" ; then
-    logger -p user.notice -t "gerrit-start[$$]"  "Not starting gerrit - NO_START=1 in /etc/default/gerritcodereview"
+      echo "gerrit-start[$$]"  "Not starting gerrit - NO_START=1 in /etc/default/gerritcodereview"
       exit 0
     fi
 
@@ -360,7 +361,7 @@ case "$ACTION" in
 
     if test -f "$GERRIT_PID" ; then
       if running "$GERRIT_PID" ; then
-        logger -p user.notice -t "gerrit-start[$$]"  "Already Running!!"
+        echo "gerrit-start[$$]"  "Already Running!!"
         exit 0
       else
         rm -f "$GERRIT_PID" "$GERRIT_RUN"
@@ -377,7 +378,7 @@ case "$ACTION" in
         disown ;
         echo \$PID >\"$GERRIT_PID\""
     else
-    logger -p user.notice -t "gerrit-start[$$]"  "Running $RUN_EXEC $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS"
+      echo "gerrit-start[$$]"  "Running $RUN_EXEC $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS"
       $RUN_EXEC $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS </dev/null >/dev/null 2>&1 &
       PID=$!
       type disown >/dev/null 2>&1 && disown
@@ -399,7 +400,7 @@ case "$ACTION" in
     sleep 1
     while running "$GERRIT_PID" && test $TIMEOUT -gt 0 ; do
       if test "x$RUN_ID" = "x`cat $GERRIT_RUN 2>/dev/null`" ; then
-        logger -p user.error -t "gerrit-start[$$]"  "OK"
+        echo "gerrit-start[$$]"  "OK"
         exit 0
       fi
 
@@ -407,12 +408,12 @@ case "$ACTION" in
       TIMEOUT=`expr $TIMEOUT - 2`
     done
 
-    logger -p user.error -t "gerrit-start[$$]"  "FAILED"
+    echo "gerrit-start[$$]"  "FAILED"
     exit 1
   ;;
 
   stop)
-    logger -p user.notice -t "gerrit-start[$$]"  "Stopping Gerrit Code Review: "
+    echo "gerrit-start[$$]"  "Stopping Gerrit Code Review: "
 
     PID=`cat "$GERRIT_PID" 2>/dev/null`
     TIMEOUT=30
@@ -423,7 +424,7 @@ case "$ACTION" in
     done
     test $TIMEOUT -gt 0 || kill -9 $PID 2>/dev/null
     rm -f "$GERRIT_PID" "$GERRIT_RUN"
-    logger -p user.notice -t "gerrit-start[$$]"  OK
+    echo "gerrit-start[$$]"  OK
  ;;
 
   restart)
@@ -435,7 +436,7 @@ case "$ACTION" in
       if test -f "$GERRIT_SH" ; then
         : OK
       else
-        logger -p user.error -t "gerrit-start[$$]"  "** ERROR: Cannot locate gerrit.sh"
+        echo "gerrit-start[$$]"  "** ERROR: Cannot locate gerrit.sh"
         exit 1
       fi
     fi
@@ -453,11 +454,11 @@ case "$ACTION" in
     ;;
 
   run|daemon)
-    logger -p user.notice -t "gerrit-start[$$]"  "Running Gerrit Code Review:"
+    echo "gerrit-start[$$]"  "Running Gerrit Code Review:"
 
     if test -f "$GERRIT_PID" ; then
         if running "$GERRIT_PID" ; then
-          logger -p user.notice -t "gerrit-start[$$]"  "Already Running!!"
+          echo "gerrit-start[$$]"  "Already Running!!"
           exit 0
         else
           rm -f "$GERRIT_PID"
@@ -484,7 +485,7 @@ case "$ACTION" in
 
     if test -f "$GERRIT_PID" ; then
         if running "$GERRIT_PID" ; then
-            logger -p user.notice -t "gerrit-start[$$]"  "Gerrit running pid="`cat "$GERRIT_PID"`
+            echo "gerrit-start[$$]"  "Gerrit running pid="`cat "$GERRIT_PID"`
             exit 0
         fi
     fi
