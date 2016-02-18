@@ -16,7 +16,7 @@ config_vars:
   MAVEN_OPTS: -Xmx384m -Xss512k -XX:+UseCompressedOops
   START_STOP_DAEMON: 0
 addons:
-  shared-database:5mb
+  cleardb:ignite
 
 default_process_types:
   web: bash bin/gerrit.sh run
