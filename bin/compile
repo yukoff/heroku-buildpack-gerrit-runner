@@ -46,16 +46,16 @@ logger -p user.notice -t "slugc[$$]" "language_pack_java java_compile_end $LOGGE
 
 cd $BUILD_DIR
 
-if [ ! -f Procfile ]; then
-  cat > Procfile <<EOF
-web: bash bin/gerrit.sh run
-config_vars:
-  JAVA_OPTS: -Dfile.encoding=UTF-8 -server -Xmx512m -XX:+UseCompressedOops
-  JAVA_HOME: /app/.jdk
-  PATH:      /app/.jdk/bin:/app/bin:/app/usr/bin:/bin:/usr/bin
-  START_STOP_DAEMON: 0
-EOF
-fi
+#if [ ! -f Procfile ]; then
+#  cat > Procfile <<EOF
+#web: bash bin/gerrit.sh run
+#config_vars:
+#  JAVA_OPTS: -Dfile.encoding=UTF-8 -server -Xmx512m -XX:+UseCompressedOops
+#  JAVA_HOME: /app/.jdk
+#  PATH:      /app/.jdk/bin:/app/bin:/app/usr/bin:/bin:/usr/bin
+#  START_STOP_DAEMON: 0
+#EOF
+#fi
 
 PROFILE_PATH="$BUILD_DIR/.profile.d/java.sh"
 mkdir -p $(dirname $PROFILE_PATH)
