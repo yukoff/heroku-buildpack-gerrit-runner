@@ -1,4 +1,4 @@
-# gerrit-runner Buildpack for Heroku
+# Heroku buildpack for running gerrit
 
 This buildpack is created to run gerrit code review on heroku. It doesn't seem to be suitable for production usage
 due heroku's worker implementation (eg. any changes done to filesystem will be lost on restart).
