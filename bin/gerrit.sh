@@ -45,8 +45,9 @@
 #   If set to "0" disables using start-stop-daemon.  This may need to
 #   be set on SuSE systems.
 
+# FIXME: Following two lines most likely could be removed - later on there
+# lots of sanity checks are done
 GERRIT_SITE=$(cd $(dirname $0)/..; pwd)
-
 echo "gerrit-start[$$]" "starting gerrit site at $GERRIT_SITE"
 
 usage() {
@@ -199,7 +200,7 @@ test -r "$GERRIT_CONFIG" || {
 # Set proper PORT in listenUrl
 listenUrl=`git config --file "$GERRIT_CONFIG" "httpd.listenUrl" | sed -re "s/:[^\/]+/:$PORT/"`
 git config --file "$GERRIT_CONFIG" "httpd.listenUrl" $listenUrl
-echo "Set httpd.listenUrl to $listenUrl"
+echo >&2 "Set httpd.listenUrl to $listenUrl"
 
 GERRIT_PID="$GERRIT_SITE/logs/gerrit.pid"
 GERRIT_RUN="$GERRIT_SITE/logs/gerrit.run"
@@ -380,6 +381,9 @@ fi
 case "$ACTION" in
   start)
     printf '%s' "Starting Gerrit Code Review: "
+
+    # sync the repos
+    . "$GERRIT_SITE/bin/gerrit-repo-sync.sh
 
     if test 1 = "$NO_START" ; then
       echo "Not starting gerrit - NO_START=1 in /etc/default/gerritcodereview"
