@@ -51,7 +51,7 @@ echo "gerrit-start[$$]" "starting gerrit site at $GERRIT_SITE"
 
 usage() {
     me=`basename "$0"`
-    echo >&2 "Usage: $me {start|stop|restart|check|status|run|supervise} [-d site]"
+    echo >&2 "Usage: $me {start|stop|restart|check|status|run|supervise|threads} [-d site]"
     exit 1
 }
 
@@ -65,6 +65,13 @@ running() {
   PID=`cat $1`
   ps -p $PID >/dev/null 2>/dev/null || return 1
   return 0
+}
+
+thread_dump() {
+  test -f $1 || return 1
+  PID=`cat $1`
+  $JSTACK $PID || return 1
+  return 0;
 }
 
 get_config() {
@@ -146,7 +153,7 @@ GERRIT_INSTALL_TRACE_FILE=etc/gerrit.config
 if type git >/dev/null 2>&1 ; then
   : OK
 else
-  echo "gerrit-start[$$]"  "** ERROR: Cannot find git in PATH"
+  echo >&2 "** ERROR: Cannot find git in PATH"
   exit 1
 fi
 
@@ -164,7 +171,7 @@ fi
 # No GERRIT_SITE yet? We're out of luck!
 ##################################################
 if test -z "$GERRIT_SITE" ; then
-    echo "gerrit-start[$$]"  "** ERROR: GERRIT_SITE not set"
+    echo >&2 "** ERROR: GERRIT_SITE not set"
     exit 1
 fi
 
@@ -172,7 +179,7 @@ INITIAL_DIR=`pwd`
 if cd "$GERRIT_SITE" ; then
   GERRIT_SITE=`pwd`
 else
-  echo "gerrit-start[$$]"  "** ERROR: Gerrit site $GERRIT_SITE not found"
+  echo >&2 "** ERROR: Gerrit site $GERRIT_SITE not found"
   exit 1
 fi
 
@@ -181,11 +188,11 @@ fi
 #####################################################
 GERRIT_CONFIG="$GERRIT_SITE/$GERRIT_INSTALL_TRACE_FILE"
 test -f "$GERRIT_CONFIG" || {
-  echo "gerrit-start[$$]" "** ERROR: Gerrit is not initialized in $GERRIT_SITE"
+   echo "** ERROR: Gerrit is not initialized in $GERRIT_SITE"
    exit 1
 }
 test -r "$GERRIT_CONFIG" || {
-  echo "gerrit-start[$$]" "** ERROR: $GERRIT_CONFIG is not readable!"
+   echo "** ERROR: $GERRIT_CONFIG is not readable!"
    exit 1
 }
 
@@ -235,7 +242,7 @@ if test -z "$JAVA_HOME" ; then
           VERSION=`expr "$VERSION" : '.*"\(1.[0-9\.]*\)["_]'`
           test -z "$VERSION" && continue
           expr "$VERSION" \< 1.2 >/dev/null && continue
-          echo "gerrit-start[$$]" "$VERSION:$J"
+          echo "$VERSION:$J"
         done
       done
     done | sort | tail -1 >"$TMPJ"
@@ -251,7 +258,7 @@ if test -z "$JAVA_HOME" ; then
     done
     test -z "$JAVA_HOME" && JAVA_HOME=
 
-    echo "gerrit-start[$$]" "** INFO: Using $JAVA"
+    echo "** INFO: Using $JAVA"
 fi
 
 if test -z "$JAVA" \
@@ -262,11 +269,14 @@ if test -z "$JAVA" \
 fi
 
 if test -z "$JAVA" ; then
-    echo "gerrit-start[$$]" \
-         "Cannot find a JRE or JDK. Please set JAVA_HOME or "\
-         "container.javaHome in $GERRIT_SITE/etc/gerrit.config "\
-         "to a >=1.6 JRE"
-    exit 1
+  echo >&2 "Cannot find a JRE or JDK. Please set JAVA_HOME or"
+  echo >&2 "container.javaHome in $GERRIT_SITE/etc/gerrit.config"
+  echo >&2 "to a >=1.7 JRE"
+  exit 1
+fi
+
+if test -z "$JSTACK"; then
+  JSTACK="$JAVA_HOME/bin/jstack"
 fi
 
 #####################################################
@@ -309,6 +319,9 @@ ulimit -x >/dev/null 2>&1 && ulimit -x unlimited  ; # file locks
 #####################################################
 
 if test -z "$GERRIT_WAR" ; then
+  GERRIT_WAR=`get_config --get container.war`
+fi
+if test -z "$GERRIT_WAR" ; then
   GERRIT_WAR="$GERRIT_SITE/bin/gerrit.war"
   test -f "$GERRIT_WAR" || GERRIT_WAR=
 fi
@@ -325,7 +338,7 @@ if test -z "$GERRIT_WAR" -a -n "$GERRIT_USER" ; then
   done
 fi
 if test -z "$GERRIT_WAR" ; then
-  echo "gerrit-start[$$]"  "** ERROR: Cannot find gerrit.war (try setting \$GERRIT_WAR)"
+  echo >&2 "** ERROR: Cannot find gerrit.war (try setting \$GERRIT_WAR)"
   exit 1
 fi
 
@@ -336,24 +349,40 @@ RUN_ARGS="-jar $GERRIT_WAR daemon -d $GERRIT_SITE"
 if test "`get_config --bool container.slave`" = "true" ; then
   RUN_ARGS="$RUN_ARGS --slave"
 fi
+DAEMON_OPTS=`get_config --get-all container.daemonOpt`
+if test -n "$DAEMON_OPTS" ; then
+  RUN_ARGS="$RUN_ARGS $DAEMON_OPTS"
+fi
+
 if test -n "$JAVA_OPTIONS" ; then
   RUN_ARGS="$JAVA_OPTIONS $RUN_ARGS"
 fi
 
-RUN_EXEC=$JAVA
-RUN_Arg1=
-RUN_Arg2='-DGerritCodeReview=1'
-RUN_Arg3=
+if test -x /usr/bin/perl ; then
+  # If possible, use Perl to mask the name of the process so its
+  # something specific to us rather than the generic 'java' name.
+  #
+  export JAVA
+  RUN_EXEC=/usr/bin/perl
+  RUN_Arg1=-e
+  RUN_Arg2='$x=$ENV{JAVA};exec $x @ARGV;die $!'
+  RUN_Arg3='-- GerritCodeReview'
+else
+  RUN_EXEC=$JAVA
+  RUN_Arg1=
+  RUN_Arg2='-DGerritCodeReview=1'
+  RUN_Arg3=
+fi
 
 ##################################################
 # Do the action
 ##################################################
 case "$ACTION" in
   start)
-    echo "gerrit-start[$$]"  "Starting Gerrit Code Review: "
+    printf '%s' "Starting Gerrit Code Review: "
 
     if test 1 = "$NO_START" ; then
-      echo "gerrit-start[$$]"  "Not starting gerrit - NO_START=1 in /etc/default/gerritcodereview"
+      echo "Not starting gerrit - NO_START=1 in /etc/default/gerritcodereview"
       exit 0
     fi
 
@@ -362,30 +391,48 @@ case "$ACTION" in
     RUN_ID=`date +%s`.$$
     RUN_ARGS="$RUN_ARGS --run-id=$RUN_ID"
 
-    if test -f "$GERRIT_PID" ; then
-      if running "$GERRIT_PID" ; then
-        echo "gerrit-start[$$]"  "Already Running!!"
-        exit 0
+    if test 1 = "$START_STOP_DAEMON" && type start-stop-daemon >/dev/null 2>&1
+    then
+      test $UID = 0 && CH_USER="-c $GERRIT_USER"
+      if start-stop-daemon -S -b $CH_USER \
+         -p "$GERRIT_PID" -m \
+         -d "$GERRIT_SITE" \
+         -a "$RUN_EXEC" -- $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS
+      then
+        : OK
       else
-        rm -f "$GERRIT_PID" "$GERRIT_RUN"
+        rc=$?
+        if test $rc = 127; then
+          echo >&2 "fatal: start-stop-daemon failed"
+          rc=1
+        fi
+        exit $rc
       fi
-    fi
-
-    if test $UID = 0 -a -n "$GERRIT_USER" ; then
-      touch "$GERRIT_PID"
-      chown $GERRIT_USER "$GERRIT_PID"
-      su - $GERRIT_USER -s /bin/sh -c "
-        JAVA='$JAVA' ; export JAVA ;
-        $RUN_EXEC $RUN_Arg1 '$RUN_Arg2' $RUN_Arg3 $RUN_ARGS </dev/null >/dev/null 2>&1 &
-        PID=\$! ;
-        disown ;
-        echo \$PID >\"$GERRIT_PID\""
     else
-      echo "gerrit-start[$$]"  "Running $RUN_EXEC $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS"
-      $RUN_EXEC $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS </dev/null >/dev/null 2>&1 &
-      PID=$!
-      type disown >/dev/null 2>&1 && disown
-      echo $PID >"$GERRIT_PID"
+      if test -f "$GERRIT_PID" ; then
+        if running "$GERRIT_PID" ; then
+          echo "Already Running!!"
+          exit 0
+        else
+          rm -f "$GERRIT_PID" "$GERRIT_RUN"
+        fi
+      fi
+
+      if test $UID = 0 -a -n "$GERRIT_USER" ; then
+        touch "$GERRIT_PID"
+        chown $GERRIT_USER "$GERRIT_PID"
+        su - $GERRIT_USER -s /bin/sh -c "
+          JAVA='$JAVA' ; export JAVA ;
+          $RUN_EXEC $RUN_Arg1 '$RUN_Arg2' $RUN_Arg3 $RUN_ARGS </dev/null >/dev/null 2>&1 &
+          PID=\$! ;
+          disown ;
+          echo \$PID >\"$GERRIT_PID\""
+      else
+        $RUN_EXEC $RUN_Arg1 "$RUN_Arg2" $RUN_Arg3 $RUN_ARGS </dev/null >/dev/null 2>&1 &
+        PID=$!
+        type disown >/dev/null 2>&1 && disown
+        echo $PID >"$GERRIT_PID"
+      fi
     fi
 
     if test $UID = 0; then
@@ -403,7 +450,7 @@ case "$ACTION" in
     sleep 1
     while running "$GERRIT_PID" && test $TIMEOUT -gt 0 ; do
       if test "x$RUN_ID" = "x`cat $GERRIT_RUN 2>/dev/null`" ; then
-        echo "gerrit-start[$$]"  "OK"
+        echo OK
         exit 0
       fi
 
@@ -411,24 +458,41 @@ case "$ACTION" in
       TIMEOUT=`expr $TIMEOUT - 2`
     done
 
-    echo "gerrit-start[$$]"  "FAILED"
+    echo FAILED
     exit 1
   ;;
 
   stop)
-    echo "gerrit-start[$$]"  "Stopping Gerrit Code Review: "
+    printf '%s' "Stopping Gerrit Code Review: "
 
-    PID=`cat "$GERRIT_PID" 2>/dev/null`
-    TIMEOUT=30
-    while running "$GERRIT_PID" && test $TIMEOUT -gt 0 ; do
-      kill $PID 2>/dev/null
+    if test 1 = "$START_STOP_DAEMON" && type start-stop-daemon >/dev/null 2>&1
+    then
+      start-stop-daemon -K -p "$GERRIT_PID" -s HUP
       sleep 1
-      TIMEOUT=`expr $TIMEOUT - 1`
-    done
-    test $TIMEOUT -gt 0 || kill -9 $PID 2>/dev/null
-    rm -f "$GERRIT_PID" "$GERRIT_RUN"
-    echo "gerrit-start[$$]"  OK
- ;;
+      if running "$GERRIT_PID" ; then
+        sleep 3
+        if running "$GERRIT_PID" ; then
+          sleep 30
+          if running "$GERRIT_PID" ; then
+            start-stop-daemon -K -p "$GERRIT_PID" -s KILL
+          fi
+        fi
+      fi
+      rm -f "$GERRIT_PID" "$GERRIT_RUN"
+      echo OK
+    else
+      PID=`cat "$GERRIT_PID" 2>/dev/null`
+      TIMEOUT=30
+      while running "$GERRIT_PID" && test $TIMEOUT -gt 0 ; do
+        kill $PID 2>/dev/null
+        sleep 1
+        TIMEOUT=`expr $TIMEOUT - 1`
+      done
+      test $TIMEOUT -gt 0 || kill -9 $PID 2>/dev/null
+      rm -f "$GERRIT_PID" "$GERRIT_RUN"
+      echo OK
+    fi
+  ;;
 
   restart)
     GERRIT_SH=$0
@@ -439,7 +503,7 @@ case "$ACTION" in
       if test -f "$GERRIT_SH" ; then
         : OK
       else
-        echo "gerrit-start[$$]"  "** ERROR: Cannot locate gerrit.sh"
+        echo >&2 "** ERROR: Cannot locate gerrit.sh"
         exit 1
       fi
     fi
@@ -457,11 +521,11 @@ case "$ACTION" in
     ;;
 
   run|daemon)
-    echo "gerrit-start[$$]"  "Running Gerrit Code Review:"
+    echo "Running Gerrit Code Review:"
 
     if test -f "$GERRIT_PID" ; then
         if running "$GERRIT_PID" ; then
-          echo "gerrit-start[$$]"  "Already Running!!"
+          echo "Already Running!!"
           exit 0
         else
           rm -f "$GERRIT_PID"
@@ -488,9 +552,19 @@ case "$ACTION" in
 
     if test -f "$GERRIT_PID" ; then
         if running "$GERRIT_PID" ; then
-            echo "gerrit-start[$$]"  "Gerrit running pid="`cat "$GERRIT_PID"`
+            echo "Gerrit running pid="`cat "$GERRIT_PID"`
             exit 0
         fi
+    fi
+    exit 3
+  ;;
+
+  threads)
+    if running "$GERRIT_PID" ; then
+      thread_dump "$GERRIT_PID"
+      exit 0
+    else
+      echo "Gerrit not running?"
     fi
     exit 3
   ;;
