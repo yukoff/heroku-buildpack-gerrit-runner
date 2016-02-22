@@ -6,6 +6,7 @@ BUILD_DIR=$1
 
 chmod 755 $BIN_DIR/gerrit.sh
 cp -a $BIN_DIR/gerrit.sh $BUILD_DIR/bin
+cp -a $BIN_DIR/gerrit-repo-sync.sh $BUILD_DIR/bin
 
 cat <<EOF
 ---
