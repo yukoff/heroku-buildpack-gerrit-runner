@@ -5,10 +5,8 @@
 echo >&2 "Syncing repos"
 
 gerritBasePath=$(git config --file ${GERRIT_SITE}/etc/gerrit.config gerrit.basePath)
-fetchRepos=$(
-find $gerritBasePath/ -type d -name *.git -exec test -f {}/config \; -print |
+find $gerritBasePath/ -type d -name *.git -exec test -f {}/config \; -print | \
   while read repoPath; do
     git config --file ${repoPath}/config remote.origin.url > /dev/null || continue;
-    git --git-dir ${repoPath} fetch origin
+    git --git-dir ${repoPath} fetch origin;
   done;
-)
