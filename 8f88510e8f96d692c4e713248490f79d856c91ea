@@ -1,0 +1,6 @@
+Code-Review+2: Yury Buldakov <yury.buldakov@gmail.com>
+Submitted-by: Yury Buldakov <yury.buldakov@gmail.com>
+Submitted-at: Wed, 24 Feb 2016 01:15:46 +0200
+Reviewed-on: http://localhost:8080/131
+Project: heroku-buildpack-gerrit-runner
+Branch: refs/heads/master
