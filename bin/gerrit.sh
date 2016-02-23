@@ -382,8 +382,9 @@ case "$ACTION" in
   start)
     printf '%s' "Starting Gerrit Code Review: "
 
-    # sync the repos
+    # sync the repos and reindex
     . $GERRIT_SITE/bin/gerrit-repo-sync.sh
+    . $GERRIT_SITE/bin/gerrit-reindex.sh
 
     if test 1 = "$NO_START" ; then
       echo "Not starting gerrit - NO_START=1 in /etc/default/gerritcodereview"
